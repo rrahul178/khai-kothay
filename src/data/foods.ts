@@ -17,6 +17,10 @@ export type Food = {
   category: Category;
   originDistrict: string; // district slug
   description: string;
+  /** Optional photo, e.g. "/foods/kacchi-biryani.jpg" (file in /public/foods). Falls back to an illustrated tile. */
+  image?: string;
+  /** Photo credit, shown if the image needs attribution. */
+  imageCredit?: string;
 };
 
 // Iconic regional foods. Descriptions are short and general; expand/verify as you grow content.

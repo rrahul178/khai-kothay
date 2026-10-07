@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { EatenButton, SaveButton } from "@/components/EatenButton";
+import FoodImage from "@/components/FoodImage";
 import { categories, foods, getFood } from "@/data/foods";
 import { getDistrict } from "@/data/geo";
 import { restaurants } from "@/data/restaurants";
@@ -26,8 +27,9 @@ export default async function FoodPage({ params }: { params: Promise<{ slug: str
   return (
     <div className="space-y-6">
       <div>
-        <div className="text-4xl">{cat?.emoji}</div>
-        <h1 className="mt-1 text-2xl font-extrabold">{food.nameBn} <span className="text-stone-400">· {food.nameEn}</span></h1>
+        <FoodImage food={food} big className="h-56 w-full overflow-hidden rounded-2xl sm:h-72" />
+        {food.imageCredit && <p className="mt-1 text-xs text-stone-400">{food.imageCredit}</p>}
+        <h1 className="mt-4 text-2xl font-extrabold">{food.nameBn} <span className="text-stone-400">· {food.nameEn}</span></h1>
         <p className="mt-2 text-stone-700">{food.description}</p>
         <div className="mt-3 flex flex-wrap gap-2 text-sm">
           <span className="chip">{cat?.labelEn}</span>
