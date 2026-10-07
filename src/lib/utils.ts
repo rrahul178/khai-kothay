@@ -1,0 +1,38 @@
+import { foods } from "@/data/foods";
+import { getDistrict } from "@/data/geo";
+
+export function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+  const R = 6371;
+  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+  const s =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((a.lat * Math.PI) / 180) * Math.cos((b.lat * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(s));
+}
+
+export const taka = (n: number) => `৳${n.toLocaleString("en-US")}`;
+export const priceLabel = (p: 1 | 2 | 3) => "৳".repeat(p);
+export const directionsUrl = (lat: number, lng: number) =>
+  `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+
+export type Badge = { id: string; emoji: string; label: string };
+
+export function badgesFor(eaten: string[]): Badge[] {
+  const out: Badge[] = [];
+  const n = eaten.length;
+  if (n >= 10) out.push({ id: "explorer", emoji: "🥉", label: "Food Explorer" });
+  if (n >= 25) out.push({ id: "traveller", emoji: "🥈", label: "Food Traveller" });
+  if (n >= 50) out.push({ id: "foodie", emoji: "🥇", label: "Bangladesh Foodie" });
+  if (n >= 100) out.push({ id: "master", emoji: "👑", label: "Deshi Food Master" });
+  const cat = (c: string) => eaten.filter((s) => foods.find((f) => f.slug === s)?.category === c).length;
+  if (cat("sweet") >= 3) out.push({ id: "sweet", emoji: "🍮", label: "Sweet Tooth" });
+  if (cat("street") >= 3) out.push({ id: "spice", emoji: "🌶️", label: "Spice Hunter" });
+  if (cat("fish") >= 2) out.push({ id: "fish", emoji: "🐟", label: "Fish Lover" });
+  if (cat("tea") >= 2) out.push({ id: "tea", emoji: "☕", label: "Tea Explorer" });
+  const divs = new Set(
+    eaten.map((s) => foods.find((f) => f.slug === s)?.originDistrict).map((d) => (d ? getDistrict(d)?.division : undefined)).filter(Boolean)
+  );
+  if (divs.size >= 8) out.push({ id: "div8", emoji: "🗺️", label: "8 Division Foodie" });
+  return out;
+}

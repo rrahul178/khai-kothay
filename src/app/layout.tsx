@@ -1,0 +1,22 @@
+import type { Metadata } from "next";
+import "./globals.css";
+import Header from "@/components/Header";
+
+export const metadata: Metadata = {
+  title: "Khai Kothay? — বাংলাদেশের খাবার, কোথায় পাবেন?",
+  description: "Bangladesh-first food discovery: find regional foods, where to eat them, and share your food journey.",
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="bn">
+      <body>
+        <Header />
+        <main className="mx-auto max-w-5xl px-4 py-6">{children}</main>
+        <footer className="mx-auto max-w-5xl px-4 py-8 text-center text-xs text-stone-500">
+          Khai Kothay? · MVP · Sample restaurant listings are demo data.
+        </footer>
+      </body>
+    </html>
+  );
+}
