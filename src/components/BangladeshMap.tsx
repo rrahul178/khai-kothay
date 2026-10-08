@@ -1,8 +1,11 @@
 "use client";
+import { useEffect, useState } from "react";
 import { BD_MAP } from "@/data/bdmap";
-import { foods } from "@/data/foods";
 import { districts as geoDistricts } from "@/data/geo";
-import { districtFill, type MapMode, type MapTheme } from "@/lib/mapTheme";
+import { layoutLabels, type MapLabel } from "@/lib/mapLabels";
+import { districtFill, labelColors, type MapMode, type MapTheme } from "@/lib/mapTheme";
+
+const FONT = '"Hind Siliguri", "Noto Sans Bengali", sans-serif';
 
 export default function BangladeshMap({
   eaten,
@@ -11,6 +14,7 @@ export default function BangladeshMap({
   theme,
   selected,
   onSelect,
+  showNames = true,
 }: {
   eaten: string[];
   visited: string[];
@@ -18,61 +22,86 @@ export default function BangladeshMap({
   theme: MapTheme;
   selected: string | null;
   onSelect: (slug: string) => void;
+  showNames?: boolean;
 }) {
-  const withFoods = new Set(foods.map((f) => f.originDistrict));
-  const pos = (slug: string) => {
-    const g = geoDistricts.find((d) => d.slug === slug)!;
-    return {
-      x: ((g.lng - BD_MAP.minLng) / (BD_MAP.maxLng - BD_MAP.minLng)) * BD_MAP.width,
-      y: ((BD_MAP.maxLat - g.lat) / (BD_MAP.maxLat - BD_MAP.minLat)) * BD_MAP.height,
+  const [labels, setLabels] = useState<MapLabel[]>([]);
+
+  // Measure Bangla names with the real font (once it has loaded), then place them.
+  useEffect(() => {
+    let off = false;
+    const run = () => {
+      if (off) return;
+      const c = document.createElement("canvas").getContext("2d")!;
+      c.font = `600 100px ${FONT}`;
+      setLabels(layoutLabels((t) => c.measureText(t).width / 100));
     };
-  };
-  const dark = theme.id === "night";
+    const f = document.fonts;
+    if (f?.load) f.load('600 16px "Hind Siliguri"', "বাংলা").then(run, run);
+    else run();
+    return () => {
+      off = true;
+    };
+  }, []);
 
   return (
-    <svg viewBox={`0 0 ${BD_MAP.width} ${BD_MAP.height}`} className="mx-auto h-auto w-full max-w-md" role="group" aria-label="Bangladesh map">
-      <g>
-        {BD_MAP.districts.map((d) => {
-          const isSel = selected === d.slug;
-          const name = geoDistricts.find((g) => g.slug === d.slug);
-          return (
-            <path
-              key={d.slug}
-              d={d.d}
-              fill={districtFill(d.slug, mode, theme, eaten, visited)}
-              stroke={isSel ? theme.accent : theme.border}
-              strokeWidth={isSel ? 2.2 : 0.7}
-              tabIndex={0}
-              role="button"
-              aria-label={name?.nameEn}
-              className="cursor-pointer outline-none transition-opacity hover:opacity-75 focus-visible:opacity-75"
-              onClick={() => onSelect(d.slug)}
-              onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onSelect(d.slug)}
-            >
-              <title>{name?.nameBn}</title>
-            </path>
-          );
-        })}
-      </g>
-      <g pointerEvents="none">
-        {BD_MAP.divisions.map((d) => (
-          <path key={d.slug} d={d.d} fill="none" stroke={theme.division} strokeWidth={1.6} strokeLinejoin="round" />
-        ))}
-      </g>
-      {mode === "foods" && (
-        <g pointerEvents="none" fontSize="10" fill={dark ? "#fafafa" : "#1c1917"} textAnchor="middle">
-          {geoDistricts
-            .filter((d) => withFoods.has(d.slug))
-            .map((d) => {
-              const { x, y } = pos(d.slug);
+    <div className="overflow-x-auto">
+      <svg
+        viewBox={`0 0 ${BD_MAP.width} ${BD_MAP.height}`}
+        className="mx-auto h-auto w-full min-w-[540px] max-w-xl"
+        role="group"
+        aria-label="Bangladesh map"
+      >
+        <g>
+          {BD_MAP.districts.map((d) => {
+            const isSel = selected === d.slug;
+            const name = geoDistricts.find((g) => g.slug === d.slug);
+            return (
+              <path
+                key={d.slug}
+                d={d.d}
+                fill={districtFill(d.slug, mode, theme, eaten, visited)}
+                stroke={isSel ? theme.accent : theme.border}
+                strokeWidth={isSel ? 2.2 : 0.7}
+                tabIndex={0}
+                role="button"
+                aria-label={name?.nameEn}
+                className="cursor-pointer outline-none transition-opacity hover:opacity-75 focus-visible:opacity-75"
+                onClick={() => onSelect(d.slug)}
+                onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onSelect(d.slug)}
+              >
+                <title>{name?.nameBn}</title>
+              </path>
+            );
+          })}
+        </g>
+        <g pointerEvents="none">
+          {BD_MAP.divisions.map((d) => (
+            <path key={d.slug} d={d.d} fill="none" stroke={theme.division} strokeWidth={1.6} strokeLinejoin="round" />
+          ))}
+        </g>
+        {showNames && (
+          <g pointerEvents="none" textAnchor="middle" fontFamily={FONT} fontWeight={600}>
+            {labels.map((l) => {
+              const c = labelColors(districtFill(l.slug, mode, theme, eaten, visited));
               return (
-                <text key={d.slug} x={x} y={y + 3} stroke={dark ? "#18181b" : "#fff"} strokeWidth={2.5} paintOrder="stroke">
-                  {d.nameBn}
+                <text
+                  key={l.slug}
+                  x={l.x}
+                  y={l.y + l.size * 0.33}
+                  fontSize={l.size}
+                  fill={c.fill}
+                  stroke={c.halo}
+                  strokeWidth={l.size * 0.28}
+                  strokeLinejoin="round"
+                  paintOrder="stroke"
+                >
+                  {l.text}
                 </text>
               );
             })}
-        </g>
-      )}
-    </svg>
+          </g>
+        )}
+      </svg>
+    </div>
   );
 }

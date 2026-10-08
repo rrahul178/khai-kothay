@@ -43,3 +43,12 @@ export function legendFor(mode: MapMode, theme: MapTheme): [string, string][] {
     ? [[theme.visited, "গিয়েছি"], [theme.base, "এখনো যাইনি"]]
     : [[theme.todo, "খাবার আছে, খাননি"], [theme.p1, "কিছু খেয়েছেন"], [theme.p3, "সব খেয়েছেন"], [theme.base, "শীঘ্রই আসছে"]];
 }
+
+/** Readable label colours for text drawn on top of a district fill (hex colours only). */
+export function labelColors(fill: string) {
+  const n = parseInt(fill.slice(1), 16);
+  const lum = (0.2126 * ((n >> 16) & 255) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255;
+  return lum > 0.55
+    ? { fill: "#1c1917", halo: "rgba(255,255,255,0.7)" }
+    : { fill: "#ffffff", halo: "rgba(0,0,0,0.5)" };
+}

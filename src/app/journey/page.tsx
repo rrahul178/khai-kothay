@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import BangladeshMap from "@/components/BangladeshMap";
 import FoodImage from "@/components/FoodImage";
+import Flag from "@/components/Flag";
 import { categories, foods, type Food } from "@/data/foods";
 import { districts, getDistrict } from "@/data/geo";
 import { useLocalList } from "@/lib/useLocalList";
@@ -37,6 +38,7 @@ export default function Journey() {
   const [filter, setFilter] = useState<string>("all");
   const [mode, setMode] = useState<MapMode>("visited");
   const [themeId, setThemeId] = useState("green");
+  const [showNames, setShowNames] = useState(true);
   const theme = getTheme(themeId);
 
   // remember mode + theme on this device
@@ -105,7 +107,7 @@ export default function Journey() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-extrabold">🇧🇩 My Bangladesh Journey</h1>
+        <h1 className="text-2xl font-extrabold"><Flag /> My Bangladesh Journey</h1>
         <div className="mt-3 flex items-center gap-3">
           <div className="h-3 flex-1 overflow-hidden rounded-full bg-stone-200">
             <div className="h-full rounded-full bg-brand transition-all" style={{ width: `${pct}%` }} />
@@ -139,10 +141,11 @@ export default function Journey() {
               ))}
             </div>
           </div>
+          <label className="mb-2 flex items-center justify-center gap-2 text-xs text-stone-600"><input type="checkbox" checked={showNames} onChange={(e) => setShowNames(e.target.checked)} /> জেলার নাম দেখান</label>
           <p className="mb-2 text-center text-xs text-stone-500">
             {mode === "visited" ? "যে জেলায় গিয়েছেন তাতে ক্লিক করুন, আবার ক্লিক করলে বাদ যাবে।" : "জেলায় ক্লিক করে সেখানকার খাবার দেখুন ও টিক দিন।"}
           </p>
-          <BangladeshMap eaten={eaten} visited={visited} mode={mode} theme={theme} selected={selected} onSelect={onSelect} />
+          <BangladeshMap eaten={eaten} visited={visited} mode={mode} theme={theme} selected={selected} onSelect={onSelect} showNames={showNames} />
           <div className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-stone-600">
             {legend.map(([c, l]) => (
               <span key={l} className="inline-flex items-center gap-1"><i className="inline-block h-3 w-3 rounded-sm border border-stone-300" style={{ background: c }} />{l}</span>

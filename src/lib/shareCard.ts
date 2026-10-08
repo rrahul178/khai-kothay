@@ -1,11 +1,13 @@
 import { BD_MAP } from "@/data/bdmap";
 import { foods } from "@/data/foods";
 import { districts, getDistrict } from "@/data/geo";
-import { districtFill, legendFor, type MapMode, type MapTheme } from "./mapTheme";
+import { layoutLabels } from "./mapLabels";
+import { districtFill, labelColors, legendFor, type MapMode, type MapTheme } from "./mapTheme";
 import type { Badge } from "./utils";
 
+// Tall story-style card (1080x1980): tall enough that all 64 district names stay readable.
 export const CARD_W = 1080;
-export const CARD_H = 1350;
+export const CARD_H = 1980;
 
 // ---- Fonts (Baloo Da 2 for titles/numbers, Hind Siliguri for text; both OFL, served from /public/fonts) ----
 let fontsReady: Promise<void> | null = null;
@@ -34,6 +36,7 @@ export function loadCardFonts(): Promise<void> {
 const D = (px: number) => `800 ${px}px KKBnD, KKLaD, "Noto Sans Bengali", sans-serif`;
 const B = (px: number) => `600 ${px}px KKBnB, KKLaB, "Noto Sans Bengali", sans-serif`;
 const toBn = (n: number | string) => String(n).replace(/\d/g, (d) => "০১২৩৪৫৬৭৮৯"[+d]);
+const hasDigit = (t: string) => /[০-৯]/.test(t);
 
 type Ctx = CanvasRenderingContext2D;
 
@@ -48,7 +51,7 @@ function rr(g: Ctx, x: number, y: number, w: number, h: number, r: number) {
   g.closePath();
 }
 
-// Drawn flag (the 🇧🇩 emoji does not render on Windows, it shows as "BD").
+// Drawn flag (the flag emoji does not render on Windows, it shows as "BD").
 function flag(g: Ctx, x: number, y: number, w: number) {
   const h = w * 0.62;
   rr(g, x, y, w, h, w * 0.09);
@@ -100,7 +103,7 @@ export function drawShareCard(canvas: HTMLCanvasElement, o: CardOptions) {
   g.strokeStyle = theme.onBg;
   g.lineWidth = 2;
   g.globalAlpha = 0.07;
-  for (const [cx, cy] of [[1000, 80], [60, 1290]] as const)
+  for (const [cx, cy] of [[1000, 80], [60, CARD_H - 70]] as const)
     for (const r of [120, 190, 260, 330]) {
       g.beginPath();
       g.arc(cx, cy, r, 0, Math.PI * 2);
@@ -133,13 +136,13 @@ export function drawShareCard(canvas: HTMLCanvasElement, o: CardOptions) {
   g.fillText(sub, CARD_W / 2, 262);
   g.globalAlpha = 1;
 
-  // map
-  const s = 0.88;
-  const mapX = 50;
-  const mapY = 296;
+  // map (large, centred)
+  const s = 1.34;
   const mw = BD_MAP.width * s;
   const mh = BD_MAP.height * s;
-  const glow = g.createRadialGradient(mapX + mw / 2, mapY + mh / 2, 40, mapX + mw / 2, mapY + mh / 2, 470);
+  const mapX = (CARD_W - mw) / 2;
+  const mapY = 296;
+  const glow = g.createRadialGradient(CARD_W / 2, mapY + mh / 2, 60, CARD_W / 2, mapY + mh / 2, 760);
   glow.addColorStop(0, "rgba(255,255,255,.16)");
   glow.addColorStop(1, "rgba(255,255,255,0)");
   g.fillStyle = glow;
@@ -150,7 +153,7 @@ export function drawShareCard(canvas: HTMLCanvasElement, o: CardOptions) {
   g.scale(s, s);
   const paths = BD_MAP.districts.map((d) => ({ slug: d.slug, p: new Path2D(d.d) }));
   g.shadowColor = "rgba(0,0,0,.45)";
-  g.shadowBlur = 22;
+  g.shadowBlur = 24;
   g.shadowOffsetY = 10;
   g.fillStyle = theme.bg[1];
   for (const { p } of paths) g.fill(p);
@@ -168,79 +171,91 @@ export function drawShareCard(canvas: HTMLCanvasElement, o: CardOptions) {
   g.lineWidth = 1.8;
   g.lineJoin = "round";
   for (const d of BD_MAP.divisions) g.stroke(new Path2D(d.d));
+
+  // all 64 district names
+  g.font = B(100);
+  const labels = layoutLabels((t) => g.measureText(t).width / 100, { min: 7, max: 13.5 });
+  g.textAlign = "center";
+  g.lineJoin = "round";
+  for (const l of labels) {
+    const c = labelColors(districtFill(l.slug, mode, theme, eaten, visited));
+    g.font = B(l.size);
+    g.lineWidth = l.size * 0.28;
+    g.strokeStyle = c.halo;
+    g.strokeText(l.text, l.x, l.y + l.size * 0.33);
+    g.fillStyle = c.fill;
+    g.fillText(l.text, l.x, l.y + l.size * 0.33);
+  }
   g.restore();
 
-  // right column: big stat
-  const cx = 830;
-  const bigNum = isVisited ? visited.length : eaten.length;
-  const bigDen = isVisited ? districts.length : total;
-  g.fillStyle = theme.accent;
-  g.beginPath();
-  g.arc(cx, 420, 128, 0, Math.PI * 2);
-  g.fill();
-  g.strokeStyle = theme.onBg;
-  g.globalAlpha = 0.35;
-  g.lineWidth = 4;
-  g.beginPath();
-  g.arc(cx, 420, 142, 0, Math.PI * 2);
-  g.stroke();
-  g.globalAlpha = 1;
-  g.fillStyle = accentText;
-  fit(g, toBn(bigNum), 190, 104, D);
-  g.fillText(toBn(bigNum), cx, 432);
-  g.font = B(36);
-  g.fillText(`/ ${toBn(bigDen)}`, cx, 486);
-  g.fillStyle = theme.onBg;
-  g.font = D(42);
-  g.fillText(isVisited ? "জেলা ভ্রমণ" : "খাবার চেখেছি", cx, 618);
-
-  // secondary stat pill
-  const subNum = isVisited ? eaten.length : visited.length;
-  const subDen = isVisited ? total : districts.length;
-  rr(g, cx - 190, 650, 380, 118, 28);
-  g.fillStyle = theme.onBg;
-  g.globalAlpha = 0.12;
-  g.fill();
-  g.globalAlpha = 1;
-  g.fillStyle = theme.onBg;
-  g.font = D(54);
-  g.fillText(`${toBn(subNum)}/${toBn(subDen)}`, cx, 710);
-  g.font = B(28);
-  g.globalAlpha = 0.85;
-  g.fillText(isVisited ? "খাবার চেখেছি" : "জেলা ঘুরেছি", cx, 750);
-  g.globalAlpha = 1;
-
-  // badges
-  g.font = D(36);
-  g.fillStyle = theme.onBg;
-  g.fillText(badges.length ? `অর্জিত ব্যাজ · ${toBn(badges.length)}টি` : "অর্জিত ব্যাজ", cx, 830);
-  const shown = badges.slice(-3).reverse();
-  if (shown.length === 0) {
-    g.font = D(30);
-    g.globalAlpha = 0.8;
-    g.fillText("১০টি খাবারে প্রথম ব্যাজ!", cx, 890);
+  // stat pills
+  const stats: { num: string; label: string; primary: boolean }[] = [
+    { num: `${toBn(visited.length)}/${toBn(districts.length)}`, label: "জেলা ভ্রমণ", primary: isVisited },
+    { num: `${toBn(eaten.length)}/${toBn(total)}`, label: "খাবার চেখেছি", primary: !isVisited },
+    { num: `${toBn(badges.length)}টি`, label: "অর্জিত ব্যাজ", primary: false },
+  ];
+  const pillW = 306;
+  const pillGap = 21;
+  const pillY = mapY + mh + 28;
+  stats.forEach((st, i) => {
+    const x = 60 + i * (pillW + pillGap);
+    rr(g, x, pillY, pillW, 124, 30);
+    if (st.primary) {
+      g.fillStyle = theme.accent;
+      g.fill();
+    } else {
+      g.fillStyle = theme.onBg;
+      g.globalAlpha = 0.13;
+      g.fill();
+      g.globalAlpha = 1;
+    }
+    g.fillStyle = st.primary ? accentText : theme.onBg;
+    fit(g, st.num, pillW - 40, 58, D);
+    g.fillText(st.num, x + pillW / 2, pillY + 68);
+    g.font = B(27);
+    g.globalAlpha = 0.9;
+    g.fillText(st.label, x + pillW / 2, pillY + 104);
     g.globalAlpha = 1;
-  }
-  shown.forEach((b, i) => {
-    const y = 852 + i * 64;
-    rr(g, cx - 190, y, 380, 56, 28);
-    g.fillStyle = theme.accent;
-    g.fill();
-    g.fillStyle = accentText;
-    g.beginPath();
-    g.arc(cx - 190 + 28, y + 28, 8, 0, Math.PI * 2);
-    g.fill();
-    fit(g, b.labelBn, 300, 30, B);
-    g.fillText(b.labelBn, cx + 12, y + 38);
   });
+
+  // badges row
+  const badgeY = pillY + 124 + 20;
+  const shownBadges = badges.slice(-3).reverse();
+  if (shownBadges.length === 0) {
+    g.fillStyle = theme.onBg;
+    g.globalAlpha = 0.8;
+    g.font = D(30);
+    g.fillText("১০টি খাবারে প্রথম ব্যাজ!", CARD_W / 2, badgeY + 38);
+    g.globalAlpha = 1;
+  } else {
+    g.font = B(28);
+    const ws = shownBadges.map((b) => g.measureText(b.labelBn).width + 70);
+    const totalW = ws.reduce((a, b) => a + b, 0) + 14 * (ws.length - 1);
+    let bx = (CARD_W - totalW) / 2;
+    shownBadges.forEach((b, i) => {
+      rr(g, bx, badgeY, ws[i], 54, 27);
+      g.fillStyle = theme.accent;
+      g.fill();
+      g.fillStyle = accentText;
+      g.beginPath();
+      g.arc(bx + 26, badgeY + 27, 7, 0, Math.PI * 2);
+      g.fill();
+      g.font = B(28);
+      g.textAlign = "left";
+      g.fillText(b.labelBn, bx + 44, badgeY + 37);
+      g.textAlign = "center";
+      bx += ws[i] + 14;
+    });
+  }
+
   // legend (centred)
   const legend = legendFor(mode, theme);
   g.font = B(26);
   const gap = 34;
   const widths = legend.map(([, l]) => 30 + 10 + g.measureText(l).width);
-  const total_w = widths.reduce((a, b) => a + b, 0) + gap * (legend.length - 1);
-  let lx = (CARD_W - total_w) / 2;
-  const ly = mapY + mh + 52;
+  const totalLegend = widths.reduce((a, b) => a + b, 0) + gap * (legend.length - 1);
+  let lx = (CARD_W - totalLegend) / 2;
+  const ly = badgeY + 54 + 52;
   g.textAlign = "left";
   legend.forEach(([col, label], i) => {
     rr(g, lx, ly - 24, 30, 30, 8);
@@ -252,6 +267,7 @@ export function drawShareCard(canvas: HTMLCanvasElement, o: CardOptions) {
     g.stroke();
     g.globalAlpha = 1;
     g.fillStyle = theme.onBg;
+    g.font = B(26);
     g.fillText(label, lx + 40, ly);
     lx += widths[i] + gap;
   });
@@ -262,7 +278,7 @@ export function drawShareCard(canvas: HTMLCanvasElement, o: CardOptions) {
     ? visited.map((v) => getDistrict(v)?.nameBn).filter(Boolean)
     : eaten.map((e) => foods.find((f) => f.slug === e)?.nameBn).filter(Boolean);
   const chips = (names.length ? (names as string[]) : [isVisited ? "মানচিত্রে ক্লিক করে শুরু করুন" : "খাবারে টিক দিয়ে শুরু করুন"]).slice();
-  const chipFont = (t: string) => (/[০-৯]/.test(t) ? D(28) : B(28));
+  const chipFont = (t: string) => (hasDigit(t) ? D(28) : B(28));
   const chipH = 54;
   const maxRowW = 940;
   const layout = (list: string[]) => {
@@ -289,7 +305,7 @@ export function drawShareCard(canvas: HTMLCanvasElement, o: CardOptions) {
   }
   if (hidden) chips.push(`+${toBn(hidden)} আরও`);
   rows = layout(chips);
-  const chipY0 = ly + 32;
+  const chipY0 = ly + 30;
   rows.forEach((row, r) => {
     const rw = row.reduce((a, c) => a + c.w, 0) + 12 * (row.length - 1);
     let x = (CARD_W - rw) / 2;
@@ -309,11 +325,11 @@ export function drawShareCard(canvas: HTMLCanvasElement, o: CardOptions) {
 
   // footer
   g.fillStyle = theme.onBg;
-  g.font = D(34);
-  g.fillText("আপনার বাংলাদেশ ভ্রমণও শুরু করুন", CARD_W / 2, CARD_H - 62);
+  g.font = D(36);
+  g.fillText("আপনার বাংলাদেশ ভ্রমণও শুরু করুন", CARD_W / 2, CARD_H - 70);
   g.font = B(28);
   g.globalAlpha = 0.85;
-  g.fillText("khai-kothay.vercel.app", CARD_W / 2, CARD_H - 26);
+  g.fillText("khai-kothay.vercel.app", CARD_W / 2, CARD_H - 30);
   g.globalAlpha = 0.5;
   g.font = B(15);
   g.textAlign = "right";
