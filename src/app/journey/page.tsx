@@ -3,15 +3,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import BangladeshMap from "@/components/BangladeshMap";
 import FoodImage from "@/components/FoodImage";
-import { BD_MAP } from "@/data/bdmap";
 import { categories, foods, type Food } from "@/data/foods";
 import { districts, getDistrict } from "@/data/geo";
 import { useLocalList } from "@/lib/useLocalList";
-import { districtFill, getTheme, legendFor, themes, type MapMode } from "@/lib/mapTheme";
+import { getTheme, legendFor, themes, type MapMode } from "@/lib/mapTheme";
+import { CARD_H, CARD_W, drawShareCard, loadCardFonts } from "@/lib/shareCard";
 import { badgesFor } from "@/lib/utils";
-
-const CARD_W = 1080;
-const CARD_H = 1350;
 
 function FoodTick({ food, on, toggle }: { food: Food; on: boolean; toggle: () => void }) {
   const cat = categories.find((c) => c.id === food.category);
@@ -75,103 +72,16 @@ export default function Journey() {
     if (mode === "visited") toggleVisited(slug); // click-to-mark, like a scratch map
   };
 
-  // Export card: same real district shapes, coloured with the chosen theme.
+  // Share card: real district shapes, Bangla text, drawn after the fonts are ready.
   useEffect(() => {
-    const c = canvas.current;
-    if (!c) return;
-    const g = c.getContext("2d")!;
-    const bg = g.createLinearGradient(0, 0, 0, CARD_H);
-    bg.addColorStop(0, theme.bg[0]);
-    bg.addColorStop(1, theme.bg[1]);
-    g.fillStyle = bg;
-    g.fillRect(0, 0, CARD_W, CARD_H);
-
-    const isVisited = mode === "visited";
-    g.textAlign = "center";
-    g.fillStyle = theme.onBg;
-    g.font = "bold 60px sans-serif";
-    g.fillText(isVisited ? "MY BANGLADESH" : "MY BANGLADESH FOOD JOURNEY", CARD_W / 2, 100);
-    g.globalAlpha = 0.75;
-    g.font = "30px sans-serif";
-    g.fillText(isVisited ? "আমার দেখা বাংলাদেশ" : "আমার বাংলাদেশের খাবারের ভ্রমণ", CARD_W / 2, 148);
-    g.globalAlpha = 1;
-
-    const s = 1.2;
-    const mw = BD_MAP.width * s;
-    const mh = BD_MAP.height * s;
-    const mx = 40;
-    const my = 190;
-    g.save();
-    g.translate(mx, my + 10);
-    g.scale(s, s);
-    for (const d of BD_MAP.districts) {
-      const p = new Path2D(d.d);
-      g.fillStyle = districtFill(d.slug, mode, theme, eaten, visited);
-      g.fill(p);
-      g.strokeStyle = theme.border;
-      g.lineWidth = 0.7;
-      g.stroke(p);
-    }
-    g.strokeStyle = theme.division;
-    g.lineWidth = 1.6;
-    for (const d of BD_MAP.divisions) g.stroke(new Path2D(d.d));
-    g.restore();
-
-    const cx = mx + mw + 60 + (CARD_W - (mx + mw + 60) - 40) / 2;
-    const bigNum = isVisited ? `${visited.length}/${districts.length}` : `${eaten.length}/${total}`;
-    const bigLabel = isVisited ? "districts visited" : "foods tasted";
-    const subNum = isVisited ? `${eaten.length}/${total}` : `${foodDistricts.size}/${districts.length}`;
-    const subLabel = isVisited ? "foods tasted" : "districts explored";
-    g.fillStyle = theme.accent;
-    g.beginPath();
-    g.arc(cx, 330, 120, 0, Math.PI * 2);
-    g.fill();
-    g.fillStyle = theme.id === "paper" || theme.id === "sunset" || theme.id === "night" ? "#111" : "#fff";
-    g.font = "bold 78px sans-serif";
-    g.fillText(bigNum, cx, 352);
-    g.fillStyle = theme.onBg;
-    g.font = "26px sans-serif";
-    g.fillText(bigLabel, cx, 468);
-    g.font = "bold 54px sans-serif";
-    g.fillText(subNum, cx, 560);
-    g.font = "26px sans-serif";
-    g.fillText(subLabel, cx, 596);
-
-    g.font = "bold 28px sans-serif";
-    g.fillText("Badges", cx, 670);
-    g.font = "30px sans-serif";
-    const list = badges.length ? badges.slice(0, 6).map((b) => `${b.emoji} ${b.label}`) : ["🍴 শুরু করুন!"];
-    list.forEach((t, i) => g.fillText(t, cx, 716 + i * 46));
-
-    const ly = my + mh + 40;
-    g.font = "24px sans-serif";
-    g.textAlign = "left";
-    let lx = 90;
-    for (const [col, label] of legendFor(mode, theme)) {
-      g.fillStyle = col;
-      g.fillRect(lx, ly - 20, 26, 26);
-      g.strokeStyle = theme.onBg;
-      g.globalAlpha = 0.35;
-      g.strokeRect(lx, ly - 20, 26, 26);
-      g.globalAlpha = 1;
-      g.fillStyle = theme.onBg;
-      g.fillText(label, lx + 36, ly);
-      lx += 36 + g.measureText(label).width + 40;
-    }
-
-    g.textAlign = "center";
-    g.fillStyle = theme.onBg;
-    g.font = "bold 52px sans-serif";
-    g.fillText("Khai Kothay? 🇧🇩", CARD_W / 2, CARD_H - 70);
-    g.globalAlpha = 0.75;
-    g.font = "24px sans-serif";
-    g.fillText("khai-kothay.vercel.app", CARD_W / 2, CARD_H - 30);
-    g.globalAlpha = 0.5;
-    g.font = "16px sans-serif";
-    g.textAlign = "right";
-    g.fillText("Map: geoBoundaries (CC BY 4.0)", CARD_W - 24, CARD_H - 8);
-    g.globalAlpha = 1;
-  }, [eaten, visited, badges, total, foodDistricts, mode, theme]);
+    let cancelled = false;
+    loadCardFonts().then(() => {
+      if (!cancelled && canvas.current) drawShareCard(canvas.current, { mode, theme, eaten, visited, badges, total });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [eaten, visited, badges, total, mode, theme]);
 
   const save = (href: string, ext: string) => {
     const a = document.createElement("a");
