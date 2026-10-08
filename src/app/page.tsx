@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Flag from "@/components/Flag";
 import SearchBox from "@/components/SearchBox";
 import FoodCard from "@/components/FoodCard";
 import { categories, foods } from "@/data/foods";
@@ -8,7 +9,7 @@ export default function Home() {
   return (
     <div className="space-y-10">
       <section className="rounded-3xl bg-brand-light p-6 sm:p-10">
-        <h1 className="text-3xl font-extrabold text-brand sm:text-4xl">আজ কী খাবেন?</h1>
+        <h1 className="font-display text-4xl font-extrabold text-brand sm:text-5xl">আজ কী খাবেন?</h1>
         <p className="mt-1 text-stone-700">আপনার এলাকার সেরা খাবার খুঁজে নিন।</p>
         <div className="mt-5"><SearchBox /></div>
         <div className="mt-4 flex flex-wrap gap-2">
@@ -46,7 +47,7 @@ export default function Home() {
       </section>
 
       <section className="card">
-        <h2 className="text-xl font-bold">🇧🇩 Bangladesh Food Challenge</h2>
+        <h2 className="text-xl font-bold"><Flag /> Bangladesh Food Challenge</h2>
         <p className="mt-1 text-sm text-stone-600">খাবারে টিক দিন, badge জিতুন, আর আপনার food journey card শেয়ার করুন।</p>
         <Link href="/journey" className="btn mt-3">My Journey দেখুন</Link>
       </section>

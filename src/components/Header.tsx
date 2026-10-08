@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Flag from "./Flag";
 
 const nav = [
   { href: "/foods", label: "খাবার খুঁজুন" },
@@ -13,8 +14,8 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-20 border-b border-stone-200 bg-white/90 backdrop-blur">
       <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
-        <Link href="/" className="text-lg font-extrabold text-brand">
-          KHAI KOTHAY? <span aria-hidden>🇧🇩</span>
+        <Link href="/" className="flex items-center gap-2 font-extrabold text-brand">
+          <span className="font-display text-xl">খাই কোথায়?</span> <Flag />
         </Link>
         <nav className="flex flex-wrap gap-x-4 gap-y-1 text-sm font-medium text-stone-600">
           {nav.map((n) => (

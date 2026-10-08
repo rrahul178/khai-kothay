@@ -3,6 +3,10 @@ const config: Config = {
   content: ["./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['"Hind Siliguri"', "ui-sans-serif", "system-ui", "sans-serif"],
+        display: ['"Baloo Da 2"', '"Hind Siliguri"', "sans-serif"],
+      },
       colors: {
         brand: { DEFAULT: "#006a4e", dark: "#004d38", light: "#e6f4ef" },
         accent: { DEFAULT: "#f42a41" },
